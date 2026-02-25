@@ -18,7 +18,7 @@ class Tournament(db.Model):
     format = db.Column(db.String(50), nullable = False)
     start_date = db.Column(db.DateTime, nullable = False)
     end_date = db.Column(db.DateTime)
-    creator_id = db.Column(db.Integer, nullable=True)  # Foreign key tới User
+    creator_id = db.Column(db.Integer, nullable=True)  
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     teams = db.relationship('Team', backref='tournament', lazy=True)
@@ -76,7 +76,7 @@ class Result(db.Model):
     team2_score = db.Column(db.Integer, nullable=False)
     winner_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    submitted_by = db.Column(db.Integer, nullable=True)  # Foreign key tới User
+    submitted_by = db.Column(db.Integer, nullable=True)  
     
     winner = db.relationship('Team', foreign_keys=[winner_id])
     submitter = db.relationship('User', foreign_keys=[submitted_by])
