@@ -3,22 +3,22 @@
 {% block content %}
     <h1>🏆 Sports Tournament Management System</h1>
     <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2rem;">
-        <div style="padding: 2rem; background: #ecf0f1; border-radius: 8px;">
+        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <h2>📋 Tournament Management</h2>
             <p>Create and manage sports tournaments</p>
             <a href="{{ url_for('tournaments') }}"><button class="btn">View Tournaments</button></a>
         </div>
-        <div style="padding: 2rem; background: #ecf0f1; border-radius: 8px;">
+        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <h2>⚽ Team Management</h2>
             <p>Add and manage participating teams</p>
             <a href="{{ url_for('teams') }}"><button class="btn">View Teams</button></a>
         </div>
-        <div style="padding: 2rem; background: #ecf0f1; border-radius: 8px;">
+        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <h2>🎯 Match Schedule</h2>
             <p>View and update match schedules</p>
             <a href="{{ url_for('matches') }}"><button class="btn">View Matches</button></a>
         </div>
-        <div style="padding: 2rem; background: #ecf0f1; border-radius: 8px;">
+        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
             <h2>📊 Standings</h2>
             <p>Track team performance</p>
             <a href="{{ url_for('standings') }}"><button class="btn">View Standings</button></a>

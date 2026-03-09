@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+    <h1>🏆 Tournaments Management</h1>
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('create_tournament') }}"><button class="btn" style="background-color: #28a745;">➕ Create New Tournament</button></a>
+        <a href="{{ url_for('home') }}"><button class="btn" style="background-color: #007bff;">🏠 Back to Home</button></a>
+    </div>
+
+    <div class="grid">
+        {% if tournaments %}
+            {% for tournament in tournaments %}
+            <div class="card">
+                <h3>{{ tournament.name }}</h3>
+                <p><strong>Sport:</strong> {{ tournament.sport_type }}</p>
+                <p><strong>Format:</strong> {{ tournament.format }}</p>
+                <p><strong>Start:</strong> {{ tournament.start_date.strftime('%Y-%m-%d') }}</p>
+                <p><strong>End:</strong> {{ tournament.end_date.strftime('%Y-%m-%d') }}</p>
+                <a href="{{ url_for('tournament_detail', id=tournament.id) }}">
+                    <button class="btn">View Details</button>
+                </a>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>No tournaments yet. Create your first tournament!</p>
+        {% endif %}
+    </div>
+{% endblock %}

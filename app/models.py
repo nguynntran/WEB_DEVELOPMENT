@@ -1,3 +1,4 @@
+from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
@@ -5,6 +6,22 @@ from datetime import datetime
 db = SQLAlchemy()
 
 # Models
+
+# User model for authentication
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(100), unique=True, nullable=False)
+    password_hash = db.Column(db.String(), nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
 
 
 
@@ -16,9 +33,9 @@ class Tournament(db.Model):
     name = db.Column(db.String(200),  nullable = False)
     sport_type = db.Column(db.String(50), nullable = False)
     format = db.Column(db.String(50), nullable = False)
-    start_date = db.Column(db.DateTime, nullable = False)
-    end_date = db.Column(db.DateTime)
-    creator_id = db.Column(db.Integer, nullable=True)  
+    start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable = False)
+    end_date = db.Column(db.DateTime, nullable = False)
+    creator_id = db.Column(db.Integer,db.ForeignKey('users.id'), nullable=True)  
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     teams = db.relationship('Team', backref='tournament', lazy=True)
@@ -76,10 +93,26 @@ class Result(db.Model):
     team2_score = db.Column(db.Integer, nullable=False)
     winner_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    submitted_by = db.Column(db.Integer, nullable=True)  
+    submitted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  
     
     winner = db.relationship('Team', foreign_keys=[winner_id])
     submitter = db.relationship('User', foreign_keys=[submitted_by])
     
     def __repr__(self):
         return f'<Result Match{self.match_id}: {self.team1_score}-{self.team2_score}>'
+    
+# Standing Model
+class Standing(db.Model):
+    __tablename__ = 'standings'
+
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=False)
+    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    points = db.Column(db.Integer, default=0)
+    wins = db.Column(db.Integer, default=0)
+    losses = db.Column(db.Integer, default=0)
+    draws = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<Standing Team{self.team_id}: {self.points} pts>'
