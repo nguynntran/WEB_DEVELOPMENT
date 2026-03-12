@@ -15,6 +15,10 @@
             <option value="Volleyball">🏐 Volleyball</option>
             <option value="Badminton">🏸 Badminton</option>
             <option value="Table Tennis">🏓 Table Tennis</option>
+            <option value="Boxing">🥊 Boxing</option>
+            <option value="MMA">🥋 MMA</option>
+            <option value="Esports">🎮 Esports</option>
+            <option value="Swimming">🏊 Swimming</option>
         </select>
         
         <label for="format">Format:</label>
@@ -33,5 +37,6 @@
         <input type="date" id="end_date" name="end_date" required>
         
         <button type="submit" class="btn">Create Tournament</button>
+        <a href="{{ url_for('tournaments') }}"><button type="button" class="btn" style="background-color: #007bff;">🏠 Back to Tournaments</button></a>
     </form>
 {% endblock %}

@@ -44,6 +44,8 @@ class Tournament(db.Model):
 
     def __repr__(self):
         return f'<Tournament {self.name}>'
+    
+
 
 # Team model
 class Team(db.Model):

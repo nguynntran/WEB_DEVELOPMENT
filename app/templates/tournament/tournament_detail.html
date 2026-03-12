@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+    <h1>🏆 Tournament Details</h1>
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('register_team', id=tournament.id) }}"><button class="btn" style="background-color: #28a745;">➕ Register Team</button></a>
+        <a href="{{ url_for('tournaments') }}"><button class="btn" style="background-color: #6c757d;">← Back to Tournaments</button></a>
+    </div>
+
+    <!-- Tournament Information -->
+    <div style="background: white; padding: 25px; border-radius: 8px; border: 2px solid #007bff; margin-bottom: 30px;">
+        <h2 style="margin-top: 0; color: #007bff;">{{ tournament.name }}</h2>
+        <p><strong>Sport:</strong> {{ tournament.sport_type }}</p>
+        <p><strong>Format:</strong> {{ tournament.format }}</p>
+        <p><strong>Start Date:</strong> {{ tournament.start_date.strftime('%Y-%m-%d') }}</p>
+        <p><strong>End Date:</strong> {{ tournament.end_date.strftime('%Y-%m-%d') }}</p>
+    </div>
+
+    <!-- Registered Teams -->
+    <h2 style="color: #333; margin-bottom: 20px;">Registered Teams</h2>
+    {% if teams %}
+        <div class="grid">
+            {% for team in teams %}
+            <div class="card" style="border-left: 4px solid #28a745;">
+                <h3 style="color: #28a745;">{{ team.name }}</h3>
+                <p><strong>Contact:</strong> {{ team.contact_info }}</p>
+                <p><strong>Group:</strong> {{ team.group_name }}</p>
+                <p><strong>Members:</strong> {{ team.members }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p style="padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center; color: #6c757d;">
+            No teams registered yet. Be the first to register your team!
+        </p>
+    {% endif %}
+{% endblock %}

@@ -11,7 +11,7 @@ def register_routes(app, db, bcrypt):
     # Tournament routes
     @app.route('/tournaments') 
     def tournaments():
-        all_tournaments = Tournament.query.order_by(Tournament.start_date.desc()).all()
+        all_tournaments = Tournament.query.filter_by(creator_id=current_user.id).order_by(Tournament.start_date.desc()).all()
         return render_template('tournament/tournaments.html', tournaments=all_tournaments)
 
     @app.route('/tournaments/create', methods = ['GET', 'POST'])
@@ -55,22 +55,107 @@ def register_routes(app, db, bcrypt):
     @app.route('/tournaments/<id>')
     @login_required
     def tournament_detail(id):
-        pass
+        tournament = Tournament.query.get_or_404(id)
+        teams = tournament.teams  # Get all teams in this tournament
+        return render_template('tournament/tournament_detail.html', tournament=tournament, teams=teams)
 
     @app.route('/tournaments/<id>/edit', methods = ['GET', 'POST'])
     @login_required
     def edit_tournament(id):
-        pass
+        tournament = Tournament.query.get_or_404(id)
+
+        if request.method == 'GET':
+            return render_template('tournament/edit_tournament.html', tournament=tournament)
+        elif request.method == 'POST':
+            tournament.name = request.form.get('name')
+            tournament.sport_type = request.form.get('sport_type')
+            tournament.format = request.form.get('format')
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+
+            try:
+                tournament.start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                tournament.end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+                if tournament.end_date < tournament.start_date:
+                    flash("ERROR: End date must be after start date")
+                    return redirect('/tournaments/edit')
+
+                db.session.commit()
+                flash("Tournament updated successfully!")
+                return redirect(f'/tournaments')
+            except ValueError:
+                flash("ERROR: Invalid date format. Please use YYYY-MM-DD.")
+                return redirect('/tournaments/edit')
 
     @app.route('/tournaments/<id>/delete', methods = ['POST'])
     @login_required
     def delete_tournament(id):
-        pass
+        tournament = Tournament.query.get_or_404(id)
+
+        db.session.delete(tournament)
+        db.session.commit()
+        flash("Tournament deleted successfully!")
+        return redirect('/tournaments')
+    
+    @app.route('/tournaments/<id>/register', methods = ['POST', 'GET'])
+    @login_required
+    def register_team(id):
+        if request.method == 'GET':
+            tournament = Tournament.query.get_or_404(id)
+            return render_template('tournament/register_team.html', tournament=tournament)
+        elif request.method == 'POST':
+            tournament = Tournament.query.get_or_404(id)
+            team_name = request.form.get('name')  
+            contact_info = request.form.get('contact_info')
+            group_name = request.form.get('group_name')
+            members = request.form.get('members')
+
+            new_team = Team(
+                name=team_name,
+                tournament_id=tournament.id,
+                contact_info=contact_info,
+                group_name=group_name,
+                members=members
+            )
+            db.session.add(new_team)
+            db.session.commit()
+            flash("Team registered successfully!")
+            return redirect(f'/tournaments/{id}')
 
 # Team routes
     @app.route('/teams')
     def teams():
-        return render_template('teams.html')
+        all_teams = Team.query.all()
+        return render_template('team/teams.html', teams=all_teams)
+    
+    @app.route('/teams/<id>')
+    @login_required
+    def team_detail(id):
+        team = Team.query.get_or_404(id)
+        return render_template('team/team_detail.html', team=team)
+    
+    @app.route('/teams/<id>/edit', methods = ['GET', 'POST'])
+    @login_required
+    def edit_team(id):
+        if request.method == 'GET':
+            team = Team.query.get_or_404(id)
+            return render_template('team/edit_team.html', team=team)
+        elif request.method == 'POST':
+            team = Team.query.get_or_404(id)
+            team.name = request.form.get('name')
+            team.contact_info = request.form.get('contact_info')
+            team.group_name = request.form.get('group_name')
+            team.members = request.form.get('members')
+
+            db.session.commit()
+            flash("Team updated successfully!")
+            return redirect(f'/teams')
+
+    @app.route('/teams/<id>/delete', methods = ['POST'])
+    @login_required
+    def delete_team(id):
+        pass
 
 # Match routes
     @app.route('/matches')
@@ -127,5 +212,5 @@ def register_routes(app, db, bcrypt):
     @app.route('/logout')
     def logout():
         logout_user()
-        return "Sucessfully logged out"
-    return redirect('/')
+        flash("Successfully logged out")
+        return redirect('/')

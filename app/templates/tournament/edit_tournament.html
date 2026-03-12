@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+    <h1>Edit Tournament</h1>
+    <form method="POST" action="{{ url_for('edit_tournament', id=tournament.id) }}" class="form">
+        <label for="name">Tournament Name:</label>
+        <input type="text" id="name" name="name" value="{{ tournament.name }}" required>
+        
+        <label for="sport_type">Sport Type:</label>
+        <select id="sport_type" name="sport_type" required>
+            <option value="">Select Sport</option>
+            <option value="Soccer" {% if tournament.sport_type == 'Soccer' %}selected{% endif %}>⚽️ Football</option>
+            <option value="Basketball" {% if tournament.sport_type == 'Basketball' %}selected{% endif %}>🏀 Basketball</option>
+            <option value="Tennis" {% if tournament.sport_type == 'Tennis' %}selected{% endif %}>🎾 Tennis</option>
+            <option value="Volleyball" {% if tournament.sport_type == 'Volleyball' %}selected{% endif %}>🏐 Volleyball</option>
+            <option value="Badminton" {% if tournament.sport_type == 'Badminton' %}selected{% endif %}>🏸 Badminton</option>
+            <option value="Table Tennis" {% if tournament.sport_type == 'Table Tennis' %}selected{% endif %}>🏓 Table Tennis</option>
+            <option value="Boxing" {% if tournament.sport_type == 'Boxing' %}selected{% endif %}>🥊 Boxing</option>
+            <option value="MMA" {% if tournament.sport_type == 'MMA' %}selected{% endif %}>🥋 MMA</option>
+            <option value="Esports" {% if tournament.sport_type == 'Esports' %}selected{% endif %}>🎮 Esports</option>
+            <option value="Swimming" {% if tournament.sport_type == 'Swimming' %}selected{% endif %}>🏊 Swimming</option>
+        </select>
+        
+        <label for="format">Format:</label>
+        <select id="format" name="format" required>
+            <option value="">Select Format</option>
+            <option value="Round Robin" {% if tournament.format == 'Round Robin' %}selected{% endif %}>🔄 Round Robin</option>
+            <option value="Knockout"
+                {% if tournament.format == 'Knockout' %}selected{% endif %}>⚔️ Knockout</option>
+            <option value="Swiss" {% if tournament.format == 'Swiss' %}selected{% endif %}>🔀 Swiss</option>
+            <option value="Group Stage + Knockout"
+                {% if tournament.format == 'Group Stage + Knockout' %}selected{% endif %}>📊 Group Stage + Knockout</option>
+        </select>
+        <label for="start_date">Start Date:</label>
+        <input type="date" id="start_date" name="start_date" value="{{ tournament.start_date.strftime('%Y-%m-%d') }}" required>
+        
+        <label for="end_date">End Date:</label>
+        <input type="date" id="end_date" name="end_date" value="{{ tournament.end_date.strftime('%Y-%m-%d') }}" required>
+        <button type="submit" class="btn">Update Tournament</button>
+    </form>
+{% endblock %}

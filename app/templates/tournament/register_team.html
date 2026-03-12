@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Tournaments{% endblock %}
+{% block content %}
+    <h1>🏆 Register Team</h1>
+    <form method="POST" action="{{ url_for('register_team', id=tournament.id) }}" class="form">
+        <label for="name">Team Name:</label>
+        <input type="text" id="name" name="name" required> <br>
+        
+        <label for="tournament_id">Tournament ID:</label>
+        <input type="integer" id="tournament_id" name="tournament_id" value="{{ tournament.id }}" readonly> <br>
+
+        <label for="contact_info">Contact Information:</label>
+        <input type="text" id="contact_info" name="contact_info" required> <br>
+
+        <label for="group_name">Group Name:</label>
+        <input type="text" id="group_name" name="group_name" required> <br>
+
+        <label for="members">Team Members (comma separated):</label>
+        <input type="text" id="members" name="members" required><br>
+        
+        <button type="submit" class="btn", style="background-color: #a76e28;">Register Team</button><br>
+    </form>
+        <a href="{{ url_for('tournament_detail', id=tournament.id) }}"><button type="button" class="btn" style="background-color: #1900ff;">🏠 Back to Tournament Details</button></a>
+    
+{% endblock %}
