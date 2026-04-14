@@ -26,7 +26,7 @@ def create_app(config_name='development'):
     
     bcrypt = Bcrypt(app)
     
-    # Initialize extensions
+    # Initialize database
     db.init_app(app)
 
     

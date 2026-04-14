@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Add Existing Team{% endblock %}
+{% block content %}
+    <h1>➕ Add Existing Team</h1>
+
+    <div style="margin: 20px 0;">
+        <a href="{{ url_for('tournament_detail', id=tournament.id) }}">
+            <button class="btn" style="background-color: #6c757d;">← Back to Tournament</button>
+        </a>
+    </div>
+
+    <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #ddd; max-width: 700px;">
+        <p><strong>Tournament:</strong> {{ tournament.name }}</p>
+        <form method="POST" action="{{ url_for('add_existing_team', id=tournament.id) }}">
+            <label for="source_team_id"><strong>Select a Team from your other tournaments:</strong></label><br><br>
+            <select id="source_team_id" name="source_team_id" required style="padding: 10px; min-width: 320px;">
+                <option value="">-- Choose Team --</option>
+                {% for team in available_teams %}
+                    <option value="{{ team.id }}">{{ team.name }} (from {{ team.tournament.name }})</option>
+                {% endfor %}
+            </select>
+            <br><br>
+
+            <button type="submit" class="btn" style="background-color: #28a745;">Add Team</button>
+        </form>
+
+        {% if not available_teams %}
+            <p style="margin-top: 15px; color: #6c757d;">No available teams found in your other tournaments.</p>
+        {% endif %}
+    </div>
+{% endblock %}
