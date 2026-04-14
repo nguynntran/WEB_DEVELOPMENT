@@ -2,6 +2,7 @@ from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+from app.constants import STRING_LIMITS, MATCH_STATUSES
 
 db = SQLAlchemy()
 
@@ -12,9 +13,9 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(100), unique=True, nullable=False)
+    username = db.Column(db.String(STRING_LIMITS['USERNAME']), unique=True, nullable=False)
     password_hash = db.Column(db.String(), nullable=False)
-    email = db.Column(db.String(255), unique=True, nullable=False)
+    email = db.Column(db.String(STRING_LIMITS['EMAIL']), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -30,9 +31,9 @@ class Tournament(db.Model):
     __tablename__ = 'tournaments'
 
     id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String(200),  nullable = False)
-    sport_type = db.Column(db.String(50), nullable = False)
-    format = db.Column(db.String(50), nullable = False)
+    name = db.Column(db.String(STRING_LIMITS['TOURNAMENT_NAME']),  nullable = False)
+    sport_type = db.Column(db.String(STRING_LIMITS['SPORT_TYPE']), nullable = False)
+    format = db.Column(db.String(STRING_LIMITS['TOURNAMENT_FORMAT']), nullable = False)
     start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable = False)
     end_date = db.Column(db.DateTime, nullable = False)
     creator_id = db.Column(db.Integer,db.ForeignKey('users.id'), nullable=True)  
@@ -52,10 +53,10 @@ class Team(db.Model):
     __tablename__ = 'teams'
     
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(200), nullable=False)
+    name = db.Column(db.String(STRING_LIMITS['TEAM_NAME']), nullable=False)
     tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=False)
-    contact_info = db.Column(db.String(255))
-    group_name = db.Column(db.String(50))
+    contact_info = db.Column(db.String(STRING_LIMITS['CONTACT_INFO']))
+    group_name = db.Column(db.String(STRING_LIMITS['GROUP_NAME']))
     members = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -75,9 +76,9 @@ class Match(db.Model):
     team1_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
     team2_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
     scheduled_time = db.Column(db.DateTime)
-    venue = db.Column(db.String(255))
-    round = db.Column(db.String(50))
-    status = db.Column(db.String(20), default='scheduled')
+    venue = db.Column(db.String(STRING_LIMITS['VENUE']))
+    round = db.Column(db.String(STRING_LIMITS['ROUND']))
+    status = db.Column(db.String(STRING_LIMITS['MATCH_STATUS']), default='scheduled')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     result = db.relationship('Result', backref='match', uselist=False, cascade='all, delete-orphan')

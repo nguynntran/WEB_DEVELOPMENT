@@ -2,10 +2,11 @@ from flask import render_template, request, redirect, flash
 from app.models import db, Tournament, Team, Match, Result, Standing
 from flask_login import login_required, current_user
 from datetime import datetime
+from app.constants import STANDINGS_POINTS
 
 
 def recalculate_standings(tournament_id):
-    """Recalculate standings for a tournament based on match results"""
+    # Recalculate standings for a tournament based on match results
     teams = Team.query.filter_by(tournament_id=tournament_id).all()
 
     Standing.query.filter_by(tournament_id=tournament_id).delete()
@@ -31,17 +32,17 @@ def recalculate_standings(tournament_id):
 
         if team1_score > team2_score:
             table[team1_id]['wins'] += 1
-            table[team1_id]['points'] += 3
+            table[team1_id]['points'] += STANDINGS_POINTS['WIN']
             table[team2_id]['losses'] += 1
         elif team2_score > team1_score:
             table[team2_id]['wins'] += 1
-            table[team2_id]['points'] += 3
+            table[team2_id]['points'] += STANDINGS_POINTS['WIN']
             table[team1_id]['losses'] += 1
         else:
             table[team1_id]['draws'] += 1
             table[team2_id]['draws'] += 1
-            table[team1_id]['points'] += 1
-            table[team2_id]['points'] += 1
+            table[team1_id]['points'] += STANDINGS_POINTS['DRAW']
+            table[team2_id]['points'] += STANDINGS_POINTS['DRAW']
 
     for team in teams:
         row = table[team.id]
@@ -57,7 +58,7 @@ def recalculate_standings(tournament_id):
 
 
 def register_match_routes(app, db):
-    """Register match routes to the Flask app"""
+    # Register match routes to the Flask app
 
     @app.route('/matches', endpoint='matches')
     @login_required
@@ -84,7 +85,7 @@ def register_match_routes(app, db):
     @app.route('/matches/<id>/result', methods=['GET', 'POST'], endpoint='match_result')
     @login_required
     def match_result(id):
-        """Submit or edit match result"""
+        # Submit or edit match result
         match = Match.query.get_or_404(id)
 
         if match.tournament.creator_id != current_user.id:
