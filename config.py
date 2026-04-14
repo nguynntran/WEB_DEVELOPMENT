@@ -17,7 +17,7 @@ class DevelopmentConfig(Config):
     # Enable debug mode: auto-reload on code changes,
     DEBUG = True
     
-    # Print all SQL queries to console
+    # Print all SQL queries 
     SQLALCHEMY_ECHO = True  
 
 class ProductionConfig(Config):

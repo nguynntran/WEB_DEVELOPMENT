@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Matches{% endblock %}
+{% block content %}
+	<h1>🎯 Matches</h1>
+
+	<div style="margin: 20px 0;">
+		<a href="{{ url_for('tournaments') }}"><button class="btn" style="background-color: #6c757d;">← Back to Tournaments</button></a>
+	</div>
+
+	<form method="GET" action="{{ url_for('matches') }}" style="background: white; padding: 15px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 20px;">
+		<label for="tournament_id"><strong>Filter by Tournament:</strong></label>
+		<select id="tournament_id" name="tournament_id" style="padding: 8px; margin-left: 10px;">
+			<option value="">All my tournaments</option>
+			{% for tournament in tournaments %}
+				<option value="{{ tournament.id }}" {% if selected_tournament and selected_tournament.id == tournament.id %}selected{% endif %}>
+					{{ tournament.name }}
+				</option>
+			{% endfor %}
+		</select>
+		<button type="submit" class="btn" style="margin-left: 10px;">Apply</button>
+	</form>
+
+	{% if matches %}
+		<table>
+			<thead>
+				<tr>
+					<th>ID</th>
+					<th>Tournament</th>
+					<th>Round</th>
+					<th>Match Date</th>
+					<th>Team 1</th>
+					<th>Team 2</th>
+					<th>Result</th>
+					<th>Status</th>
+					<th>Action</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for match in matches %}
+				<tr>
+					<td>{{ match.id }}</td>
+					<td>{{ match.tournament.name }}</td>
+					<td>{{ match.round or 'N/A' }}</td>
+					<td>{{ match.scheduled_time.strftime('%Y-%m-%d %H:%M') if match.scheduled_time else 'TBD' }}</td>
+					<td>{{ match.team1.name }}</td>
+					<td>{{ match.team2.name }}</td>
+					<td>
+						{% if match.result %}
+							{{ match.result.team1_score }} - {{ match.result.team2_score }}
+						{% else %}
+							Not submitted
+						{% endif %}
+					</td>
+					<td>{{ match.status }}</td>
+					<td>
+						<a href="{{ url_for('match_result', id=match.id) }}">
+							<button class="btn" style="background-color: #007bff; padding: 6px 10px;">
+								{% if match.result %}Edit Result{% else %}Fill Result{% endif %}
+							</button>
+						</a>
+					</td>
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	{% else %}
+		<p style="padding: 20px; background: #f8f9fa; border-radius: 8px; color: #6c757d; text-align: center;">
+			No matches yet. Open a tournament and click "Generate Matches".
+		</p>
+	{% endif %}
+{% endblock %}

@@ -1,0 +1,557 @@
+from flask import Blueprint, render_template, request, redirect, flash
+from app.models import db, User, Tournament, Team, Match, Result, Standing
+from flask_login import login_user, logout_user, login_required, current_user
+from datetime import datetime
+from collections import OrderedDict
+
+def register_routes(app, db, bcrypt):
+    def recalculate_standings(tournament_id):
+        teams = Team.query.filter_by(tournament_id=tournament_id).all()
+
+        # Reset standings for this tournament
+        Standing.query.filter_by(tournament_id=tournament_id).delete()
+
+        table = {}
+        for team in teams:
+            table[team.id] = {
+                'points': 0,
+                'wins': 0,
+                'losses': 0,
+                'draws': 0
+            }
+
+        matches = Match.query.filter_by(tournament_id=tournament_id).all()
+        for match in matches:
+            if not match.result:
+                continue
+
+            team1_id = match.team1_id
+            team2_id = match.team2_id
+            team1_score = match.result.team1_score
+            team2_score = match.result.team2_score
+
+            if team1_score > team2_score:
+                table[team1_id]['wins'] += 1
+                table[team1_id]['points'] += 3
+                table[team2_id]['losses'] += 1
+            elif team2_score > team1_score:
+                table[team2_id]['wins'] += 1
+                table[team2_id]['points'] += 3
+                table[team1_id]['losses'] += 1
+            else:
+                table[team1_id]['draws'] += 1
+                table[team2_id]['draws'] += 1
+                table[team1_id]['points'] += 1
+                table[team2_id]['points'] += 1
+
+        for team in teams:
+            row = table[team.id]
+            standing = Standing(
+                tournament_id=tournament_id,
+                team_id=team.id,
+                points=row['points'],
+                wins=row['wins'],
+                losses=row['losses'],
+                draws=row['draws']
+            )
+            db.session.add(standing)
+
+    def generate_round_robin_matches(tournament):
+        teams = Team.query.filter_by(tournament_id=tournament.id).order_by(Team.id).all()
+        if len(teams) < 2:
+            return 0
+
+        team_ids = [team.id for team in teams]
+        if len(team_ids) % 2 == 1:
+            team_ids.append(None) 
+
+        total_rounds = len(team_ids) - 1
+        half = len(team_ids) // 2
+        created_count = 0
+
+        for round_num in range(total_rounds):
+            for i in range(half):
+                team1_id = team_ids[i]
+                team2_id = team_ids[-(i + 1)]
+
+                if team1_id is not None and team2_id is not None:
+                    match = Match(
+                        tournament_id=tournament.id,
+                        team1_id=team1_id,
+                        team2_id=team2_id,
+                        round=f'Round {round_num + 1}',
+                        status='scheduled'
+                    )
+                    db.session.add(match)
+                    created_count += 1
+
+            # Circle method rotation 
+            team_ids = [team_ids[0]] + [team_ids[-1]] + team_ids[1:-1]
+
+        return created_count
+
+    def generate_knockout_matches(tournament):
+        teams = Team.query.filter_by(tournament_id=tournament.id).order_by(Team.id).all()
+        if len(teams) < 2:
+            return 0
+
+        created_count = 0
+        for i in range(0, len(teams) - 1, 2):
+            match = Match(
+                tournament_id=tournament.id,
+                team1_id=teams[i].id,
+                team2_id=teams[i + 1].id,
+                round='Round 1',
+                status='scheduled'
+            )
+            db.session.add(match)
+            created_count += 1
+
+        return created_count
+
+    @app.route("/")
+    def home():
+        return render_template('home.html')
+    
+    # Tournament routes
+    @app.route('/tournaments') 
+    def tournaments():
+        all_tournaments = Tournament.query.filter_by(creator_id=current_user.id).order_by(Tournament.start_date.desc()).all()
+        return render_template('tournament/tournaments.html', tournaments=all_tournaments)
+
+    @app.route('/tournaments/create', methods = ['GET', 'POST'])
+    @login_required
+    def create_tournament():
+        if request.method == 'GET':
+            return render_template('tournament/create_tournament.html')
+        elif request.method == 'POST':
+            name = request.form.get('name')
+            sport_type = request.form.get('sport_type')
+            format = request.form.get('format')
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+            try:
+                start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+                if end_date < start_date:
+                    flash("ERROR: End date must be after start date")
+                    return redirect('/tournaments/create')
+                new_tournament = Tournament(
+                name=name,
+                sport_type=sport_type,
+                format=format,
+                start_date=start_date,
+                end_date=end_date,
+                creator_id=current_user.id
+                )
+                db.session.add(new_tournament)
+                db.session.commit()
+                
+                print(f"Created tournament: {new_tournament} + with ID {new_tournament.id} - Name: {new_tournament.name}")
+                flash("Tournament created successfully!")
+                return redirect('/tournaments')
+            except ValueError:
+                flash("ERROR: Invalid date format. Please use YYYY-MM-DD.")
+                return redirect('/tournaments/create')
+
+            
+    
+    @app.route('/tournaments/<id>')
+    @login_required
+    def tournament_detail(id):
+        tournament = Tournament.query.get_or_404(id)
+        teams = tournament.teams  # Get all teams in this tournament
+        return render_template('tournament/tournament_detail.html', tournament=tournament, teams=teams)
+
+    @app.route('/tournaments/<id>/edit', methods = ['GET', 'POST'])
+    @login_required
+    def edit_tournament(id):
+        tournament = Tournament.query.get_or_404(id)
+
+        if request.method == 'GET':
+            return render_template('tournament/edit_tournament.html', tournament=tournament)
+        elif request.method == 'POST':
+            tournament.name = request.form.get('name')
+            tournament.sport_type = request.form.get('sport_type')
+            tournament.format = request.form.get('format')
+            start_date = request.form.get('start_date')
+            end_date = request.form.get('end_date')
+
+            try:
+                tournament.start_date = datetime.strptime(start_date, '%Y-%m-%d')
+                tournament.end_date = datetime.strptime(end_date, '%Y-%m-%d')
+
+                if tournament.end_date < tournament.start_date:
+                    flash("ERROR: End date must be after start date")
+                    return redirect('/tournaments/edit')
+
+                db.session.commit()
+                flash("Tournament updated successfully!")
+                return redirect(f'/tournaments')
+            except ValueError:
+                flash("ERROR: Invalid date format. Please use YYYY-MM-DD.")
+                return redirect('/tournaments/edit')
+
+    @app.route('/tournaments/<id>/delete', methods = ['POST'])
+    @login_required
+    def delete_tournament(id):
+        tournament = Tournament.query.get_or_404(id)
+
+        db.session.delete(tournament)
+        db.session.commit()
+        flash("Tournament deleted successfully!")
+        return redirect('/tournaments')
+    
+    @app.route('/tournaments/<id>/register', methods = ['POST', 'GET'])
+    @login_required
+    def register_team(id):
+        if request.method == 'GET':
+            tournament = Tournament.query.get_or_404(id)
+            return render_template('tournament/register_team.html', tournament=tournament)
+        elif request.method == 'POST':
+            tournament = Tournament.query.get_or_404(id)
+            team_name = request.form.get('name')  
+            contact_info = request.form.get('contact_info')
+            group_name = request.form.get('group_name')
+            members = request.form.get('members')
+
+            new_team = Team(
+                name=team_name,
+                tournament_id=tournament.id,
+                contact_info=contact_info,
+                group_name=group_name,
+                members=members
+            )
+            db.session.add(new_team)
+            db.session.commit()
+            flash("Team registered successfully!")
+            return redirect(f'/tournaments/{id}')
+
+    @app.route('/tournaments/<id>/teams/add-existing', methods=['GET', 'POST'])
+    @login_required
+    def add_existing_team(id):
+        tournament = Tournament.query.get_or_404(id)
+
+        if tournament.creator_id != current_user.id:
+            flash('You are not allowed to add teams to this tournament.')
+            return redirect(f'/tournaments/{id}')
+
+        # Only show teams from other tournaments created by current user
+        available_teams = Team.query.join(Tournament).filter(
+            Tournament.creator_id == current_user.id,
+            Team.tournament_id != tournament.id
+        ).order_by(Team.name.asc()).all()
+
+        if request.method == 'GET':
+            return render_template(
+                'tournament/add_existing_team.html',
+                tournament=tournament,
+                available_teams=available_teams
+            )
+
+        source_team_id = request.form.get('source_team_id')
+        source_team = Team.query.join(Tournament).filter(
+            Team.id == source_team_id,
+            Tournament.creator_id == current_user.id
+        ).first()
+
+        if not source_team:
+            flash('Selected team is invalid.')
+            return redirect(f'/tournaments/{id}/teams/add-existing')
+
+        if source_team.tournament_id == tournament.id:
+            flash('This team is already in the selected tournament.')
+            return redirect(f'/tournaments/{id}/teams/add-existing')
+
+        existing_name = Team.query.filter_by(
+            tournament_id=tournament.id,
+            name=source_team.name
+        ).first()
+        if existing_name:
+            flash('A team with the same name already exists in this tournament.')
+            return redirect(f'/tournaments/{id}/teams/add-existing')
+
+        cloned_team = Team(
+            name=source_team.name,
+            tournament_id=tournament.id,
+            contact_info=source_team.contact_info,
+            group_name=source_team.group_name,
+            members=source_team.members
+        )
+        db.session.add(cloned_team)
+        db.session.commit()
+
+        flash('Existing team added to tournament successfully!')
+        return redirect(f'/tournaments/{id}')
+
+    @app.route('/tournaments/<id>/matches/generate', methods=['POST'])
+    @login_required
+    def generate_matches(id):
+        tournament = Tournament.query.get_or_404(id)
+
+        if tournament.creator_id != current_user.id:
+            flash('You are not allowed to generate matches for this tournament.')
+            return redirect(f'/tournaments/{id}')
+
+        if Team.query.filter_by(tournament_id=tournament.id).count() < 2:
+            flash('Need at least 2 teams to generate matches.')
+            return redirect(f'/tournaments/{id}')
+
+        existing_matches = Match.query.filter_by(tournament_id=tournament.id).all()
+        if existing_matches:
+            has_played_match = any(
+                match.status == 'completed' or match.result is not None
+                for match in existing_matches
+            )
+
+            if has_played_match:
+                flash('Cannot regenerate because some matches already have results.')
+                return redirect(f'/tournaments/{id}')
+
+            for match in existing_matches:
+                db.session.delete(match)
+            db.session.flush()
+
+        format_name = (tournament.format or '').strip().lower()
+        created_count = 0
+
+        if format_name == 'round robin':
+            created_count = generate_round_robin_matches(tournament)
+        elif format_name == 'knockout':
+            created_count = generate_knockout_matches(tournament)
+        else:
+            flash('This format is not supported yet. Please use Round Robin or Knockout.')
+            return redirect(f'/tournaments/{id}')
+
+        db.session.commit()
+        if existing_matches:
+            flash(f'Successfully refreshed schedule with {created_count} matches.')
+        else:
+            flash(f'Successfully generated {created_count} matches.')
+        return redirect(f'/matches?tournament_id={tournament.id}')
+
+# Team routes
+    @app.route('/teams')
+    @login_required
+    def teams():
+        all_teams = Team.query.join(Tournament).filter(
+            Tournament.creator_id == current_user.id
+        ).order_by(Team.name.asc(), Tournament.name.asc()).all()
+
+        grouped = OrderedDict()
+        for team in all_teams:
+            key = team.name.strip().lower()
+            if key not in grouped:
+                grouped[key] = {
+                    'name': team.name,
+                    'contact_info': team.contact_info,
+                    'group_name': team.group_name,
+                    'members': team.members,
+                    'tournaments': []
+                }
+
+            grouped[key]['tournaments'].append({
+                'id': team.tournament.id,
+                'name': team.tournament.name,
+                'team_id': team.id
+            })
+
+        grouped_teams = list(grouped.values())
+        return render_template('team/teams.html', grouped_teams=grouped_teams)
+    
+    @app.route('/teams/<id>')
+    @login_required
+    def team_detail(id):
+        team = Team.query.get_or_404(id)
+        return render_template('team/team_detail.html', team=team)
+    
+    @app.route('/teams/<id>/edit', methods = ['GET', 'POST'])
+    @login_required
+    def edit_team(id):
+        if request.method == 'GET':
+            team = Team.query.get_or_404(id)
+            return render_template('team/edit_team.html', team=team)
+        elif request.method == 'POST':
+            team = Team.query.get_or_404(id)
+            team.name = request.form.get('name')
+            team.contact_info = request.form.get('contact_info')
+            team.group_name = request.form.get('group_name')
+            team.members = request.form.get('members')
+
+            db.session.commit()
+            flash("Team updated successfully!")
+            return redirect(f'/teams')
+
+    @app.route('/teams/<id>/delete', methods = ['POST'])
+    @login_required
+    def delete_team(id):
+        pass
+
+# Match routes
+    @app.route('/matches')
+    @login_required
+    def matches():
+        tournament_id = request.args.get('tournament_id')
+
+        user_tournaments = Tournament.query.filter_by(creator_id=current_user.id).order_by(Tournament.name.asc()).all()
+        query = Match.query.join(Tournament).filter(Tournament.creator_id == current_user.id)
+
+        selected_tournament = None
+        if tournament_id:
+            query = query.filter(Match.tournament_id == tournament_id)
+            selected_tournament = Tournament.query.filter_by(id=tournament_id, creator_id=current_user.id).first()
+
+        all_matches = query.order_by(Match.round.asc(), Match.id.asc()).all()
+        return render_template(
+            'matches/matches.html',
+            matches=all_matches,
+            tournaments=user_tournaments,
+            selected_tournament=selected_tournament
+        )
+
+    @app.route('/matches/<id>/result', methods=['GET', 'POST'])
+    @login_required
+    def match_result(id):
+        match = Match.query.get_or_404(id)
+
+        if match.tournament.creator_id != current_user.id:
+            flash('You are not allowed to update this match.')
+            return redirect('/matches')
+
+        existing_result = Result.query.filter_by(match_id=match.id).first()
+
+        if request.method == 'POST':
+            scheduled_time_str = request.form.get('scheduled_time')
+            team1_score_str = request.form.get('team1_score')
+            team2_score_str = request.form.get('team2_score')
+
+            try:
+                if scheduled_time_str:
+                    match.scheduled_time = datetime.strptime(scheduled_time_str, '%Y-%m-%dT%H:%M')
+
+                team1_score = int(team1_score_str)
+                team2_score = int(team2_score_str)
+                if team1_score < 0 or team2_score < 0:
+                    flash('Scores must be 0 or greater.')
+                    return redirect(f'/matches/{id}/result')
+
+                winner_id = None
+                if team1_score > team2_score:
+                    winner_id = match.team1_id
+                elif team2_score > team1_score:
+                    winner_id = match.team2_id
+
+                if existing_result:
+                    existing_result.team1_score = team1_score
+                    existing_result.team2_score = team2_score
+                    existing_result.winner_id = winner_id
+                    existing_result.submitted_by = current_user.id
+                else:
+                    new_result = Result(
+                        match_id=match.id,
+                        team1_score=team1_score,
+                        team2_score=team2_score,
+                        winner_id=winner_id,
+                        submitted_by=current_user.id
+                    )
+                    db.session.add(new_result)
+
+                match.status = 'completed'
+                recalculate_standings(match.tournament_id)
+                db.session.commit()
+
+                flash('Match result saved successfully!')
+                return redirect(f'/matches?tournament_id={match.tournament_id}')
+            except ValueError:
+                flash('Invalid input. Please enter valid score numbers and date/time.')
+                return redirect(f'/matches/{id}/result')
+
+        return render_template('matches/matches_result.html', match=match, result=existing_result)
+
+# Standings routes
+    @app.route('/standings')
+    @login_required
+    def standings():
+        tournament_id = request.args.get('tournament_id')
+
+        user_tournaments = Tournament.query.filter_by(
+            creator_id=current_user.id
+        ).order_by(Tournament.name.asc()).all()
+
+        selected_tournament = None
+        standings_rows = []
+
+        if tournament_id:
+            selected_tournament = Tournament.query.filter_by(
+                id=tournament_id,
+                creator_id=current_user.id
+            ).first()
+
+            if selected_tournament:
+                recalculate_standings(selected_tournament.id)
+                db.session.commit()
+                standings_rows = Standing.query.join(Team).filter(
+                    Standing.tournament_id == selected_tournament.id
+                ).order_by(
+                    Standing.points.desc(),
+                    Standing.wins.desc(),
+                    Standing.draws.desc(),
+                    Standing.losses.asc(),
+                    Team.name.asc()
+                ).all()
+
+        return render_template(
+            'standings/standings.html',
+            tournaments=user_tournaments,
+            selected_tournament=selected_tournament,
+            standings=standings_rows
+        )
+
+# Authentication routes
+    @app.route('/register', methods = ['GET', 'POST'])
+    def register():
+        if request.method == 'GET':
+            return render_template('register.html')
+        elif request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+
+            # Check if user already exists
+            existing_user = User.query.filter_by(username=username).first()
+            if existing_user:
+                return "User already exists"
+
+            # Create new user
+            email = request.form.get('email') or f'{username}@example.com'
+            new_user = User(username=username, email=email)
+            new_user.set_password(password)  # Method này sẽ hash password tự động
+            db.session.add(new_user)
+            db.session.commit()
+
+            return redirect('/')
+    @app.route('/login', methods = ['GET', 'POST'])
+    def login():
+        if request.method == 'GET':
+            return render_template('login.html')
+        elif request.method == 'POST':
+            username = request.form.get('username')
+            password = request.form.get('password')
+
+            # Find user
+            user = User.query.filter_by(username=username).first()
+            
+            # Check if user exists and password is correct
+            if user and user.check_password(password):
+                login_user(user)
+                return redirect('/')
+            else:
+                return "Invalid username or password"
+
+            return redirect('/')
+        
+    @app.route('/logout')
+    def logout():
+        logout_user()
+        flash("Successfully logged out")
+        return redirect('/')

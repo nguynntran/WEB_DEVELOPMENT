@@ -4,7 +4,14 @@
     <h1>🏆 Tournament Details</h1>
     <div style="margin: 20px 0;">
         <a href="{{ url_for('register_team', id=tournament.id) }}"><button class="btn" style="background-color: #28a745;">➕ Register Team</button></a>
+        <a href="{{ url_for('add_existing_team', id=tournament.id) }}"><button class="btn" style="background-color: #17a2b8;">📥 Add Existing Team</button></a>
         <a href="{{ url_for('tournaments') }}"><button class="btn" style="background-color: #6c757d;">← Back to Tournaments</button></a>
+        <a href="{{ url_for('matches') }}?tournament_id={{ tournament.id }}"><button class="btn" style="background-color: #007bff;">🎯 View Matches</button></a>
+        {% if current_user.is_authenticated and current_user.id == tournament.creator_id %}
+        <form method="POST" action="{{ url_for('generate_matches', id=tournament.id) }}" style="display: inline;">
+            <button type="submit" class="btn" style="background-color: #fd7e14;">⚙️ Generate/Refresh Matches</button>
+        </form>
+        {% endif %}
     </div>
 
     <!-- Tournament Information -->
