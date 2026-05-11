@@ -1,7 +1,10 @@
-from flask import render_template, request, redirect, flash
-from app.models import db, Tournament, Team, Match
-from flask_login import login_required, current_user
+import math
 from datetime import datetime
+
+from flask import flash, redirect, render_template, request
+from flask_login import current_user, login_required
+
+from app.models import Match, Team, Tournament, db
 
 
 def generate_round_robin_matches(tournament):
@@ -12,7 +15,7 @@ def generate_round_robin_matches(tournament):
 
     team_ids = [team.id for team in teams]
     if len(team_ids) % 2 == 1:
-        team_ids.append(None) 
+        team_ids.append(None)
 
     total_rounds = len(team_ids) - 1
     half = len(team_ids) // 2
@@ -28,13 +31,13 @@ def generate_round_robin_matches(tournament):
                     tournament_id=tournament.id,
                     team1_id=team1_id,
                     team2_id=team2_id,
-                    round=f'Round {round_num + 1}',
-                    status='scheduled'
+                    round=f"Round {round_num + 1}",
+                    status="scheduled",
                 )
                 db.session.add(match)
                 created_count += 1
 
-        # Circle method rotation 
+        # Circle method rotation
         team_ids = [team_ids[0]] + [team_ids[-1]] + team_ids[1:-1]
 
     return created_count
@@ -52,8 +55,8 @@ def generate_knockout_matches(tournament):
             tournament_id=tournament.id,
             team1_id=teams[i].id,
             team2_id=teams[i + 1].id,
-            round='Round 1',
-            status='scheduled'
+            round="Round 1",
+            status="scheduled",
         )
         db.session.add(match)
         created_count += 1
@@ -61,91 +64,190 @@ def generate_knockout_matches(tournament):
     return created_count
 
 
+def generate_group_stage_matches(tournament, num_groups=None):
+    # Generate Group Stage matches
+    # - Divide teams into groups and store group_name
+    # - Generate round-robin within each group
+
+    teams = Team.query.filter_by(tournament_id=tournament.id).order_by(Team.id).all()
+    num_teams = len(teams)
+
+    print(f"DEBUG generate_group_stage_matches: num_teams = {num_teams}")
+
+    if num_teams < 2:
+        print("DEBUG: Not enough teams")
+        return 0
+
+    # Calculate number of groups if not specified
+    if num_groups is None:
+        if num_teams <= 4:
+            num_groups = 1
+        elif num_teams <= 8:
+            num_groups = 2
+        elif num_teams <= 12:
+            num_groups = 3
+        else:
+            num_groups = 4
+
+    print(f"DEBUG: num_groups = {num_groups}")
+
+    # Divide teams into groups and assign group_name
+    teams_per_group = math.ceil(num_teams / num_groups)
+    groups = {}
+    group_labels = ["A", "B", "C", "D", "E", "F"]  # Support up to 6 groups
+
+    for i, team in enumerate(teams):
+        group_idx = i // teams_per_group
+        if group_idx not in groups:
+            groups[group_idx] = []
+
+        group_label = (
+            group_labels[group_idx]
+            if group_idx < len(group_labels)
+            else f"Group {group_idx + 1}"
+        )
+
+        # Update team's group_name
+        team.group_name = f"Group {group_label}"
+        db.session.add(team)
+        groups[group_idx].append(team)
+        print(f"DEBUG: Team {team.name} assigned to Group {group_label}")
+
+    db.session.flush()  # Flush to save group assignments
+
+    created_count = 0
+
+    # Generate round-robin matches within each group
+    for group_idx, group_teams in groups.items():
+        print(f"DEBUG: Processing group_idx {group_idx} with {len(group_teams)} teams")
+
+        # Generate all matches within this group (round-robin)
+        for i in range(len(group_teams)):
+            for j in range(i + 1, len(group_teams)):
+                match = Match(
+                    tournament_id=tournament.id,
+                    team1_id=group_teams[i].id,
+                    team2_id=group_teams[j].id,
+                    round=f"{group_teams[i].group_name}",
+                    status="scheduled",
+                )
+                db.session.add(match)
+                created_count += 1
+                print(
+                    "DEBUG: Created match "
+                    f"{group_teams[i].name} vs {group_teams[j].name}"
+                )
+
+    print(f"DEBUG: Total matches created = {created_count}")
+    return created_count
+
+
 def register_tournament_routes(app, db):
     """Register tournament routes to the Flask app"""
 
-    @app.route('/tournaments', endpoint='tournaments')
+    @app.route("/tournaments", endpoint="tournaments")
+    @login_required
     def tournaments():
         """List all tournaments created by current user"""
-        all_tournaments = Tournament.query.filter_by(creator_id=current_user.id).order_by(Tournament.start_date.desc()).all()
-        return render_template('tournament/tournaments.html', tournaments=all_tournaments)
+        all_tournaments = (
+            Tournament.query.filter_by(creator_id=current_user.id)
+            .order_by(Tournament.start_date.desc())
+            .all()
+        )
+        return render_template(
+            "tournament/tournaments.html", tournaments=all_tournaments
+        )
 
-    @app.route('/tournaments/create', methods=['GET', 'POST'], endpoint='create_tournament')
+    @app.route(
+        "/tournaments/create", methods=["GET", "POST"], endpoint="create_tournament"
+    )
     @login_required
     def create_tournament():
         """Create a new tournament"""
-        if request.method == 'GET':
-            return render_template('tournament/create_tournament.html')
-        elif request.method == 'POST':
-            name = request.form.get('name')
-            sport_type = request.form.get('sport_type')
-            format = request.form.get('format')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
+        if request.method == "GET":
+            return render_template("tournament/create_tournament.html")
+        elif request.method == "POST":
+            name = request.form.get("name")
+            sport_type = request.form.get("sport_type")
+            format = request.form.get("format")
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
             try:
-                start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                start_date = datetime.strptime(start_date, "%Y-%m-%d")
+                end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
                 if end_date < start_date:
                     flash("ERROR: End date must be after start date")
-                    return redirect('/tournaments/create')
+                    return redirect("/tournaments/create")
                 new_tournament = Tournament(
-                name=name,
-                sport_type=sport_type,
-                format=format,
-                start_date=start_date,
-                end_date=end_date,
-                creator_id=current_user.id
+                    name=name,
+                    sport_type=sport_type,
+                    format=format,
+                    start_date=start_date,
+                    end_date=end_date,
+                    creator_id=current_user.id,
                 )
                 db.session.add(new_tournament)
                 db.session.commit()
-                
-                print(f"Created tournament: {new_tournament} + with ID {new_tournament.id} - Name: {new_tournament.name}")
+
+                print(
+                    "Created tournament: "
+                    f"{new_tournament} + with ID {new_tournament.id} "
+                    f"- Name: {new_tournament.name}"
+                )
                 flash("Tournament created successfully!")
-                return redirect('/tournaments')
+                return redirect("/tournaments")
             except ValueError:
                 flash("ERROR: Invalid date format. Please use YYYY-MM-DD.")
-                return redirect('/tournaments/create')
+                return redirect("/tournaments/create")
 
-    @app.route('/tournaments/<id>', endpoint='tournament_detail')
+    @app.route("/tournaments/<id>", endpoint="tournament_detail")
     @login_required
     def tournament_detail(id):
         """View tournament details"""
         tournament = Tournament.query.get_or_404(id)
         teams = tournament.teams
-        return render_template('tournament/tournament_detail.html', tournament=tournament, teams=teams)
+        return render_template(
+            "tournament/tournament_detail.html", tournament=tournament, teams=teams
+        )
 
-    @app.route('/tournaments/<id>/edit', methods=['GET', 'POST'], endpoint='edit_tournament')
+    @app.route(
+        "/tournaments/<id>/edit", methods=["GET", "POST"], endpoint="edit_tournament"
+    )
     @login_required
     def edit_tournament(id):
         """Edit a tournament"""
         tournament = Tournament.query.get_or_404(id)
 
-        if request.method == 'GET':
-            return render_template('tournament/edit_tournament.html', tournament=tournament)
-        elif request.method == 'POST':
-            tournament.name = request.form.get('name')
-            tournament.sport_type = request.form.get('sport_type')
-            tournament.format = request.form.get('format')
-            start_date = request.form.get('start_date')
-            end_date = request.form.get('end_date')
+        if request.method == "GET":
+            return render_template(
+                "tournament/edit_tournament.html", tournament=tournament
+            )
+        elif request.method == "POST":
+            tournament.name = request.form.get("name")
+            tournament.sport_type = request.form.get("sport_type")
+            tournament.format = request.form.get("format")
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
 
             try:
-                tournament.start_date = datetime.strptime(start_date, '%Y-%m-%d')
-                tournament.end_date = datetime.strptime(end_date, '%Y-%m-%d')
+                tournament.start_date = datetime.strptime(start_date, "%Y-%m-%d")
+                tournament.end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
                 if tournament.end_date < tournament.start_date:
                     flash("ERROR: End date must be after start date")
-                    return redirect('/tournaments/edit')
+                    return redirect("/tournaments/edit")
 
                 db.session.commit()
                 flash("Tournament updated successfully!")
-                return redirect(f'/tournaments')
+                return redirect("/tournaments")
             except ValueError:
                 flash("ERROR: Invalid date format. Please use YYYY-MM-DD.")
-                return redirect('/tournaments/edit')
+                return redirect("/tournaments/edit")
 
-    @app.route('/tournaments/<id>/delete', methods=['POST'], endpoint='delete_tournament')
+    @app.route(
+        "/tournaments/<id>/delete", methods=["POST"], endpoint="delete_tournament"
+    )
     @login_required
     def delete_tournament(id):
         """Delete a tournament"""
@@ -153,134 +255,180 @@ def register_tournament_routes(app, db):
         db.session.delete(tournament)
         db.session.commit()
         flash("Tournament deleted successfully!")
-        return redirect('/tournaments')
+        return redirect("/tournaments")
 
-    @app.route('/tournaments/<id>/register', methods=['POST', 'GET'], endpoint='register_team')
+    @app.route(
+        "/tournaments/<id>/register", methods=["POST", "GET"], endpoint="register_team"
+    )
     @login_required
     def register_team(id):
         """Register a new team in a tournament"""
-        if request.method == 'GET':
+        if request.method == "GET":
             tournament = Tournament.query.get_or_404(id)
-            return render_template('tournament/register_team.html', tournament=tournament)
-        elif request.method == 'POST':
+            return render_template(
+                "tournament/register_team.html", tournament=tournament
+            )
+        elif request.method == "POST":
             tournament = Tournament.query.get_or_404(id)
-            team_name = request.form.get('name')  
-            contact_info = request.form.get('contact_info')
-            group_name = request.form.get('group_name')
-            members = request.form.get('members')
+            team_name = request.form.get("name")
+            contact_info = request.form.get("contact_info")
+            group_name = request.form.get("group_name")
+            members = request.form.get("members")
 
             new_team = Team(
                 name=team_name,
                 tournament_id=tournament.id,
                 contact_info=contact_info,
                 group_name=group_name,
-                members=members
+                members=members,
             )
             db.session.add(new_team)
             db.session.commit()
             flash("Team registered successfully!")
-            return redirect(f'/tournaments/{id}')
+            return redirect(f"/tournaments/{id}")
 
-    @app.route('/tournaments/<id>/teams/add-existing', methods=['GET', 'POST'], endpoint='add_existing_team')
+    @app.route(
+        "/tournaments/<id>/teams/add-existing",
+        methods=["GET", "POST"],
+        endpoint="add_existing_team",
+    )
     @login_required
     def add_existing_team(id):
         """Add an existing team from another tournament"""
         tournament = Tournament.query.get_or_404(id)
 
         if tournament.creator_id != current_user.id:
-            flash('You are not allowed to add teams to this tournament.')
-            return redirect(f'/tournaments/{id}')
+            flash("You are not allowed to add teams to this tournament.")
+            return redirect(f"/tournaments/{id}")
 
-        available_teams = Team.query.join(Tournament).filter(
-            Tournament.creator_id == current_user.id,
-            Team.tournament_id != tournament.id
-        ).order_by(Team.name.asc()).all()
+        available_teams = (
+            Team.query.join(Tournament)
+            .filter(
+                Tournament.creator_id == current_user.id,
+                Team.tournament_id != tournament.id,
+            )
+            .order_by(Team.name.asc())
+            .all()
+        )
 
-        if request.method == 'GET':
+        if request.method == "GET":
             return render_template(
-                'tournament/add_existing_team.html',
+                "tournament/add_existing_team.html",
                 tournament=tournament,
-                available_teams=available_teams
+                available_teams=available_teams,
             )
 
-        source_team_id = request.form.get('source_team_id')
-        source_team = Team.query.join(Tournament).filter(
-            Team.id == source_team_id,
-            Tournament.creator_id == current_user.id
-        ).first()
+        source_team_id = request.form.get("source_team_id")
+        source_team = (
+            Team.query.join(Tournament)
+            .filter(Team.id == source_team_id, Tournament.creator_id == current_user.id)
+            .first()
+        )
 
         if not source_team:
-            flash('Selected team is invalid.')
-            return redirect(f'/tournaments/{id}/teams/add-existing')
+            flash("Selected team is invalid.")
+            return redirect(f"/tournaments/{id}/teams/add-existing")
 
         if source_team.tournament_id == tournament.id:
-            flash('This team is already in the selected tournament.')
-            return redirect(f'/tournaments/{id}/teams/add-existing')
+            flash("This team is already in the selected tournament.")
+            return redirect(f"/tournaments/{id}/teams/add-existing")
 
         existing_name = Team.query.filter_by(
-            tournament_id=tournament.id,
-            name=source_team.name
+            tournament_id=tournament.id, name=source_team.name
         ).first()
         if existing_name:
-            flash('A team with the same name already exists in this tournament.')
-            return redirect(f'/tournaments/{id}/teams/add-existing')
+            flash("A team with the same name already exists in this tournament.")
+            return redirect(f"/tournaments/{id}/teams/add-existing")
 
         cloned_team = Team(
             name=source_team.name,
             tournament_id=tournament.id,
             contact_info=source_team.contact_info,
             group_name=source_team.group_name,
-            members=source_team.members
+            members=source_team.members,
         )
         db.session.add(cloned_team)
         db.session.commit()
 
-        flash('Existing team added to tournament successfully!')
-        return redirect(f'/tournaments/{id}')
+        flash("Existing team added to tournament successfully!")
+        return redirect(f"/tournaments/{id}")
 
-    @app.route('/tournaments/<id>/matches/generate', methods=['POST'], endpoint='generate_matches')
+    @app.route(
+        "/tournaments/<id>/matches/generate",
+        methods=["POST"],
+        endpoint="generate_matches",
+    )
     @login_required
     def generate_matches(id):
         """Generate matches for a tournament"""
-        tournament = Tournament.query.get_or_404(id)
+        try:
+            tournament = Tournament.query.get_or_404(id)
 
-        if tournament.creator_id != current_user.id:
-            flash('You are not allowed to generate matches for this tournament.')
-            return redirect(f'/tournaments/{id}')
+            if tournament.creator_id != current_user.id:
+                flash("You are not allowed to generate matches for this tournament.")
+                return redirect(f"/tournaments/{id}")
 
-        if Team.query.filter_by(tournament_id=tournament.id).count() < 2:
-            flash('Need at least 2 teams to generate matches.')
-            return redirect(f'/tournaments/{id}')
+            if Team.query.filter_by(tournament_id=tournament.id).count() < 2:
+                flash("Need at least 2 teams to generate matches.")
+                return redirect(f"/tournaments/{id}")
 
-        existing_matches = Match.query.filter_by(tournament_id=tournament.id).all()
-        if existing_matches:
-            has_played_match = any(
-                match.status == 'completed' or match.result is not None
-                for match in existing_matches
-            )
+            existing_matches = Match.query.filter_by(tournament_id=tournament.id).all()
+            if existing_matches:
+                has_played_match = any(
+                    match.status == "completed" or match.result is not None
+                    for match in existing_matches
+                )
 
-            if has_played_match:
-                flash('Cannot regenerate because some matches already have results.')
-                return redirect(f'/tournaments/{id}')
+                if has_played_match:
+                    flash(
+                        "Cannot regenerate because some matches already have results."
+                    )
+                    return redirect(f"/tournaments/{id}")
 
-            for match in existing_matches:
-                db.session.delete(match)
-            db.session.flush()
+                # Delete all old matches
+                for match in existing_matches:
+                    db.session.delete(match)
+                db.session.flush()
 
-        format_name = (tournament.format or '').strip().lower()
-        created_count = 0
+            format_name = (tournament.format or "").strip().lower()
+            created_count = 0
 
-        if format_name == 'round robin':
-            created_count = generate_round_robin_matches(tournament)
-        elif format_name == 'knockout':
-            created_count = generate_knockout_matches(tournament)
-        else:
-            flash('This format is not supported yet. Please use Round Robin or Knockout.')
-            return redirect(f'/tournaments/{id}')
+            print(f"\n{'=' * 60}")
+            print(f"DEBUG: Tournament ID = {tournament.id}")
+            print(f"DEBUG: Tournament format RAW = '{tournament.format}'")
+            print(f"DEBUG: Tournament format stripped lower = '{format_name}'")
+            print(f"DEBUG: Format equals 'group stage'? {format_name == 'group stage'}")
+            print(f"{'=' * 60}\n")
 
-        db.session.commit()
-        if existing_matches:
-            flash(f'Successfully refreshed schedule with {created_count} matches.')
-        else:
-            flash(f'Successfully generated {created_count} matches.')
-        return redirect(f'/matches?tournament_id={tournament.id}')
+            if format_name == "round robin":
+                created_count = generate_round_robin_matches(tournament)
+                print(f"DEBUG: Round Robin generated {created_count} matches")
+            elif format_name == "knockout":
+                created_count = generate_knockout_matches(tournament)
+                print(f"DEBUG: Knockout generated {created_count} matches")
+            elif format_name == "group stage":
+                print("DEBUG: Entering Group Stage generation...")
+                created_count = generate_group_stage_matches(tournament)
+                print(f"DEBUG: Group Stage generated {created_count} matches")
+            else:
+                print(f"DEBUG: Format '{format_name}' not recognized!")
+                flash(
+                    "This format is not supported yet. "
+                    "Please use Round Robin, Knockout, or Group Stage."
+                )
+                return redirect(f"/tournaments/{id}")
+
+            db.session.commit()
+            if existing_matches:
+                flash(f"Successfully refreshed schedule with {created_count} matches.")
+            else:
+                flash(f"Successfully generated {created_count} matches.")
+            return redirect(f"/matches?tournament_id={tournament.id}")
+
+        except Exception as e:
+            print(f"ERROR in generate_matches: {str(e)}")
+            import traceback
+
+            print(traceback.format_exc())
+            flash(f"Error generating matches: {str(e)}")
+            return redirect(f"/tournaments/{id}")

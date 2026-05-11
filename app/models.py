@@ -1,21 +1,26 @@
+from datetime import datetime
+
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime
-from app.constants import STRING_LIMITS, MATCH_STATUSES
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from app.constants import STRING_LIMITS
 
 db = SQLAlchemy()
 
 # Models
 
+
 # User model for authentication
 class User(UserMixin, db.Model):
-    __tablename__ = 'users'
+    __tablename__ = "users"
 
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(STRING_LIMITS['USERNAME']), unique=True, nullable=False)
+    username = db.Column(
+        db.String(STRING_LIMITS["USERNAME"]), unique=True, nullable=False
+    )
     password_hash = db.Column(db.String(), nullable=False)
-    email = db.Column(db.String(STRING_LIMITS['EMAIL']), unique=True, nullable=False)
+    email = db.Column(db.String(STRING_LIMITS["EMAIL"]), unique=True, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def set_password(self, password):
@@ -25,92 +30,107 @@ class User(UserMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
 
-
 # Tournament Model
 class Tournament(db.Model):
-    __tablename__ = 'tournaments'
+    __tablename__ = "tournaments"
 
-    id = db.Column(db.Integer, primary_key = True)
-    name = db.Column(db.String(STRING_LIMITS['TOURNAMENT_NAME']),  nullable = False)
-    sport_type = db.Column(db.String(STRING_LIMITS['SPORT_TYPE']), nullable = False)
-    format = db.Column(db.String(STRING_LIMITS['TOURNAMENT_FORMAT']), nullable = False)
-    start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable = False)
-    end_date = db.Column(db.DateTime, nullable = False)
-    creator_id = db.Column(db.Integer,db.ForeignKey('users.id'), nullable=True)  
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(STRING_LIMITS["TOURNAMENT_NAME"]), nullable=False)
+    sport_type = db.Column(db.String(STRING_LIMITS["SPORT_TYPE"]), nullable=False)
+    format = db.Column(db.String(STRING_LIMITS["TOURNAMENT_FORMAT"]), nullable=False)
+    start_date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    creator_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
-    teams = db.relationship('Team', backref='tournament', lazy=True)
-    matches = db.relationship('Match', backref='tournament', lazy=True)
-    standings = db.relationship('Standing', backref='tournament', lazy=True)
+    teams = db.relationship("Team", backref="tournament", lazy=True)
+    matches = db.relationship("Match", backref="tournament", lazy=True)
+    standings = db.relationship("Standing", backref="tournament", lazy=True)
 
     def __repr__(self):
-        return f'<Tournament {self.name}>'
-    
+        return f"<Tournament {self.name}>"
 
 
 # Team model
 class Team(db.Model):
-    __tablename__ = 'teams'
-    
+    __tablename__ = "teams"
+
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(STRING_LIMITS['TEAM_NAME']), nullable=False)
-    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=False)
-    contact_info = db.Column(db.String(STRING_LIMITS['CONTACT_INFO']))
-    group_name = db.Column(db.String(STRING_LIMITS['GROUP_NAME']))
+    name = db.Column(db.String(STRING_LIMITS["TEAM_NAME"]), nullable=False)
+    tournament_id = db.Column(
+        db.Integer, db.ForeignKey("tournaments.id"), nullable=False
+    )
+    contact_info = db.Column(db.String(STRING_LIMITS["CONTACT_INFO"]))
+    group_name = db.Column(db.String(STRING_LIMITS["GROUP_NAME"]))
     members = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    home_matches = db.relationship('Match', foreign_keys='Match.team1_id', backref='team1', lazy='dynamic')
-    away_matches = db.relationship('Match', foreign_keys='Match.team2_id', backref='team2', lazy='dynamic')
-    standings = db.relationship('Standing', backref='team', lazy='dynamic')
-    
+
+    home_matches = db.relationship(
+        "Match", foreign_keys="Match.team1_id", backref="team1", lazy="dynamic"
+    )
+    away_matches = db.relationship(
+        "Match", foreign_keys="Match.team2_id", backref="team2", lazy="dynamic"
+    )
+    standings = db.relationship("Standing", backref="team", lazy="dynamic")
+
     def __repr__(self):
-        return f'<Team {self.name}>'
+        return f"<Team {self.name}>"
+
 
 # Match model
 class Match(db.Model):
-    __tablename__ = 'matches'
-    
+    __tablename__ = "matches"
+
     id = db.Column(db.Integer, primary_key=True)
-    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=False)
-    team1_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
-    team2_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    tournament_id = db.Column(
+        db.Integer, db.ForeignKey("tournaments.id"), nullable=False
+    )
+    team1_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
+    team2_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
     scheduled_time = db.Column(db.DateTime)
-    venue = db.Column(db.String(STRING_LIMITS['VENUE']))
-    round = db.Column(db.String(STRING_LIMITS['ROUND']))
-    status = db.Column(db.String(STRING_LIMITS['MATCH_STATUS']), default='scheduled')
+    venue = db.Column(db.String(STRING_LIMITS["VENUE"]))
+    round = db.Column(db.String(STRING_LIMITS["ROUND"]))
+    status = db.Column(db.String(STRING_LIMITS["MATCH_STATUS"]), default="scheduled")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    result = db.relationship('Result', backref='match', uselist=False, cascade='all, delete-orphan')
-    
+
+    result = db.relationship(
+        "Result", backref="match", uselist=False, cascade="all, delete-orphan"
+    )
+
     def __repr__(self):
-        return f'<Match {self.id}: Team{self.team1_id} vs Team{self.team2_id}>'
+        return f"<Match {self.id}: Team{self.team1_id} vs Team{self.team2_id}>"
+
 
 # Result model
 class Result(db.Model):
-    __tablename__ = 'results'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('matches.id'), nullable=False, unique=True)
-    team1_score = db.Column(db.Integer, nullable=False)
-    team2_score = db.Column(db.Integer, nullable=False)
-    winner_id = db.Column(db.Integer, db.ForeignKey('teams.id'))
-    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
-    submitted_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)  
-    
-    winner = db.relationship('Team', foreign_keys=[winner_id])
-    submitter = db.relationship('User', foreign_keys=[submitted_by])
-    
-    def __repr__(self):
-        return f'<Result Match{self.match_id}: {self.team1_score}-{self.team2_score}>'
-    
-# Standing Model
-class Standing(db.Model):
-    __tablename__ = 'standings'
+    __tablename__ = "results"
 
     id = db.Column(db.Integer, primary_key=True)
-    tournament_id = db.Column(db.Integer, db.ForeignKey('tournaments.id'), nullable=False)
-    team_id = db.Column(db.Integer, db.ForeignKey('teams.id'), nullable=False)
+    match_id = db.Column(
+        db.Integer, db.ForeignKey("matches.id"), nullable=False, unique=True
+    )
+    team1_score = db.Column(db.Integer, nullable=False)
+    team2_score = db.Column(db.Integer, nullable=False)
+    winner_id = db.Column(db.Integer, db.ForeignKey("teams.id"))
+    submitted_at = db.Column(db.DateTime, default=datetime.utcnow)
+    submitted_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+
+    winner = db.relationship("Team", foreign_keys=[winner_id])
+    submitter = db.relationship("User", foreign_keys=[submitted_by])
+
+    def __repr__(self):
+        return f"<Result Match{self.match_id}: {self.team1_score}-{self.team2_score}>"
+
+
+# Standing Model
+class Standing(db.Model):
+    __tablename__ = "standings"
+
+    id = db.Column(db.Integer, primary_key=True)
+    tournament_id = db.Column(
+        db.Integer, db.ForeignKey("tournaments.id"), nullable=False
+    )
+    team_id = db.Column(db.Integer, db.ForeignKey("teams.id"), nullable=False)
     points = db.Column(db.Integer, default=0)
     wins = db.Column(db.Integer, default=0)
     losses = db.Column(db.Integer, default=0)
@@ -118,4 +138,4 @@ class Standing(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f'<Standing Team{self.team_id}: {self.points} pts>'
+        return f"<Standing Team{self.team_id}: {self.points} pts>"

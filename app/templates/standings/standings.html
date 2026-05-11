@@ -22,33 +22,68 @@
     {% if selected_tournament %}
     <div style="background: white; padding: 25px; border-radius: 8px; border: 2px solid #28a745;">
         <h2 style="margin-top: 0; color: #28a745;">{{ selected_tournament.name }}</h2>
-        {% if standings %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Rank</th>
-                    <th>Team Name</th>
-                    <th>Points</th>
-                    <th>Matches Played</th>
-                    <th>Wins</th>
-                    <th>Draws</th>
-                    <th>Losses</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in standings %}
-                <tr>
-                    <td>{{ loop.index }}</td>
-                    <td>{{ row.team.name }}</td>
-                    <td>{{ row.points }}</td>
-                    <td>{{ row.wins + row.draws + row.losses }}</td>
-                    <td>{{ row.wins }}</td>
-                    <td>{{ row.draws }}</td>
-                    <td>{{ row.losses }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+        {% if grouped_standings %}
+            <!-- Group Stage Format: Show standings by group -->
+            {% for group_name in grouped_standings|sort %}
+            <div style="margin-bottom: 30px;">
+                <h3 style="color: #17a2b8; border-bottom: 2px solid #17a2b8; padding-bottom: 10px;">{{ group_name }}</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Team Name</th>
+                            <th>Points</th>
+                            <th>Matches Played</th>
+                            <th>Wins</th>
+                            <th>Draws</th>
+                            <th>Losses</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in grouped_standings[group_name] %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ row.team.name }}</td>
+                            <td>{{ row.points }}</td>
+                            <td>{{ row.wins + row.draws + row.losses }}</td>
+                            <td>{{ row.wins }}</td>
+                            <td>{{ row.draws }}</td>
+                            <td>{{ row.losses }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endfor %}
+        {% elif standings %}
+            <!-- Other tournament formats: Show single standings table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th>Rank</th>
+                        <th>Team Name</th>
+                        <th>Points</th>
+                        <th>Matches Played</th>
+                        <th>Wins</th>
+                        <th>Draws</th>
+                        <th>Losses</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in standings %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ row.team.name }}</td>
+                        <td>{{ row.points }}</td>
+                        <td>{{ row.wins + row.draws + row.losses }}</td>
+                        <td>{{ row.wins }}</td>
+                        <td>{{ row.draws }}</td>
+                        <td>{{ row.losses }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         {% else %}
             <p style="color: #6c757d;">No standings data yet. Add match results first.</p>
         {% endif %}

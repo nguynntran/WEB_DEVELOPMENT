@@ -2,26 +2,57 @@
 {% block title %}Home{% endblock %}
 {% block content %}
     <h1>🏆 Sports Tournament Management System</h1>
-    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2rem;">
-        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h2>📋 Tournament Management</h2>
-            <p>Create and manage sports tournaments</p>
-            <a href="{{ url_for('tournaments') }}"><button class="btn">View Tournaments</button></a>
+
+    {% if current_user.is_authenticated %}
+        <!-- Logged in view -->
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-top: 2rem;">
+            <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2>📋 Tournament Management</h2>
+                <p>Create and manage sports tournaments</p>
+                <a href="{{ url_for('tournaments') }}"><button class="btn">View Tournaments</button></a>
+            </div>
+            <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2>⚽ Team Management</h2>
+                <p>Add and manage participating teams</p>
+                <a href="{{ url_for('teams') }}"><button class="btn">View Teams</button></a>
+            </div>
+            <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2>🎯 Match Schedule</h2>
+                <p>View and update match schedules</p>
+                <a href="{{ url_for('matches') }}"><button class="btn">View Matches</button></a>
+            </div>
+            <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                <h2>📊 Standings</h2>
+                <p>Track team performance</p>
+                <a href="{{ url_for('standings') }}"><button class="btn">View Standings</button></a>
+            </div>
         </div>
-        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h2>⚽ Team Management</h2>
-            <p>Add and manage participating teams</p>
-            <a href="{{ url_for('teams') }}"><button class="btn">View Teams</button></a>
+    {% else %}
+        <!-- Not logged in view -->
+        <div style="display: grid; grid-template-columns: 1fr; gap: 2rem; margin-top: 2rem;">
+            <div style="padding: 3rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white; text-align: center;">
+                <h2 style="font-size: 2rem; margin-bottom: 1rem;">Welcome to Tournament Manager</h2>
+                <p style="font-size: 1.1rem; margin-bottom: 2rem;">Manage sports tournaments, schedule matches, and track standings all in one place.</p>
+                <div style="display: flex; gap: 1rem; justify-content: center;">
+                    <a href="{{ url_for('login') }}"><button class="btn" style="background: white; color: #667eea; font-weight: bold;">Login</button></a>
+                    <a href="{{ url_for('register') }}"><button class="btn" style="background: transparent; border: 2px solid white; color: white; font-weight: bold;">Sign Up</button></a>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; margin-top: 2rem;">
+                <div style="padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #667eea; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                    <h3>📋 Create Tournaments</h3>
+                    <p>Easily set up tournaments with different formats</p>
+                </div>
+                <div style="padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #764ba2; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                    <h3>⚽ Manage Teams</h3>
+                    <p>Register and organize teams for your events</p>
+                </div>
+                <div style="padding: 1.5rem; background: white; border-radius: 8px; border-left: 4px solid #f093fb; box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center;">
+                    <h3>📊 Track Results</h3>
+                    <p>Auto-calculate standings and track match results</p>
+                </div>
+            </div>
         </div>
-        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h2>🎯 Match Schedule</h2>
-            <p>View and update match schedules</p>
-            <a href="{{ url_for('matches') }}"><button class="btn">View Matches</button></a>
-        </div>
-        <div style="padding: 2rem; background: white; border-radius: 8px; border: 2px solid #ddd; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-            <h2>📊 Standings</h2>
-            <p>Track team performance</p>
-            <a href="{{ url_for('standings') }}"><button class="btn">View Standings</button></a>
-        </div>
-    </div>
+    {% endif %}
 {% endblock %}

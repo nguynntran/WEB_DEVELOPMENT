@@ -1,6 +1,7 @@
 from flask import render_template, request
-from app.models import db, Tournament, Team, Match, Standing
-from flask_login import login_required, current_user
+from flask_login import current_user, login_required
+
+from app.models import Match, Standing, Team, Tournament, db
 
 
 def recalculate_standings_view(tournament_id):
@@ -11,12 +12,7 @@ def recalculate_standings_view(tournament_id):
 
     table = {}
     for team in teams:
-        table[team.id] = {
-            'points': 0,
-            'wins': 0,
-            'losses': 0,
-            'draws': 0
-        }
+        table[team.id] = {"points": 0, "wins": 0, "losses": 0, "draws": 0}
 
     matches = Match.query.filter_by(tournament_id=tournament_id).all()
     for match in matches:
@@ -29,28 +25,28 @@ def recalculate_standings_view(tournament_id):
         team2_score = match.result.team2_score
 
         if team1_score > team2_score:
-            table[team1_id]['wins'] += 1
-            table[team1_id]['points'] += 3
-            table[team2_id]['losses'] += 1
+            table[team1_id]["wins"] += 1
+            table[team1_id]["points"] += 3
+            table[team2_id]["losses"] += 1
         elif team2_score > team1_score:
-            table[team2_id]['wins'] += 1
-            table[team2_id]['points'] += 3
-            table[team1_id]['losses'] += 1
+            table[team2_id]["wins"] += 1
+            table[team2_id]["points"] += 3
+            table[team1_id]["losses"] += 1
         else:
-            table[team1_id]['draws'] += 1
-            table[team2_id]['draws'] += 1
-            table[team1_id]['points'] += 1
-            table[team2_id]['points'] += 1
+            table[team1_id]["draws"] += 1
+            table[team2_id]["draws"] += 1
+            table[team1_id]["points"] += 1
+            table[team2_id]["points"] += 1
 
     for team in teams:
         row = table[team.id]
         standing = Standing(
             tournament_id=tournament_id,
             team_id=team.id,
-            points=row['points'],
-            wins=row['wins'],
-            losses=row['losses'],
-            draws=row['draws']
+            points=row["points"],
+            wins=row["wins"],
+            losses=row["losses"],
+            draws=row["draws"],
         )
         db.session.add(standing)
 
@@ -58,41 +54,58 @@ def recalculate_standings_view(tournament_id):
 def register_standing_routes(app, db):
     """Register standing routes to the Flask app"""
 
-    @app.route('/standings', endpoint='standings')
+    @app.route("/standings", endpoint="standings")
     @login_required
     def standings():
         """View standings for tournaments"""
-        tournament_id = request.args.get('tournament_id')
+        tournament_id = request.args.get("tournament_id")
 
-        user_tournaments = Tournament.query.filter_by(
-            creator_id=current_user.id
-        ).order_by(Tournament.name.asc()).all()
+        user_tournaments = (
+            Tournament.query.filter_by(creator_id=current_user.id)
+            .order_by(Tournament.name.asc())
+            .all()
+        )
 
         selected_tournament = None
         standings_rows = []
+        grouped_standings = {}
 
         if tournament_id:
             selected_tournament = Tournament.query.filter_by(
-                id=tournament_id,
-                creator_id=current_user.id
+                id=tournament_id, creator_id=current_user.id
             ).first()
 
             if selected_tournament:
                 recalculate_standings_view(selected_tournament.id)
                 db.session.commit()
-                standings_rows = Standing.query.join(Team).filter(
-                    Standing.tournament_id == selected_tournament.id
-                ).order_by(
-                    Standing.points.desc(),
-                    Standing.wins.desc(),
-                    Standing.draws.desc(),
-                    Standing.losses.asc(),
-                    Team.name.asc()
-                ).all()
+                standings_rows = (
+                    Standing.query.join(Team)
+                    .filter(Standing.tournament_id == selected_tournament.id)
+                    .order_by(
+                        Standing.points.desc(),
+                        Standing.wins.desc(),
+                        Standing.draws.desc(),
+                        Standing.losses.asc(),
+                        Team.name.asc(),
+                    )
+                    .all()
+                )
+
+                # Group standings by group_name if tournament format is Group Stage
+                if (
+                    selected_tournament.format
+                    and selected_tournament.format.lower() == "group stage"
+                ):
+                    for standing in standings_rows:
+                        group_name = standing.team.group_name or "No Group"
+                        if group_name not in grouped_standings:
+                            grouped_standings[group_name] = []
+                        grouped_standings[group_name].append(standing)
 
         return render_template(
-            'standings/standings.html',
+            "standings/standings.html",
             tournaments=user_tournaments,
             selected_tournament=selected_tournament,
-            standings=standings_rows
+            standings=standings_rows,
+            grouped_standings=grouped_standings,
         )

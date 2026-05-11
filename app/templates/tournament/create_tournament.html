@@ -5,7 +5,7 @@
     <form method = "POST" action="{{url_for('create_tournament')}}" class="form">
         <label for="name">Tournament Name:</label>
         <input type="text" id="name" name="name" required>
-        
+
         <label for="sport_type">Sport Type:</label>
         <select id="sport_type" name="sport_type" required>
             <option value="">Select Sport</option>
@@ -20,7 +20,7 @@
             <option value="Esports">🎮 Esports</option>
             <option value="Swimming">🏊 Swimming</option>
         </select>
-        
+
         <label for="format">Format:</label>
         <select id="format" name="format" required>
             <option value="">Select Format</option>
@@ -29,13 +29,13 @@
             <option value="Swiss">🔀 Swiss</option>
             <option value="Group Stage + Knockout">📊 Group Stage + Knockout</option>
         </select>
-        
+
         <label for="start_date">Start Date:</label>
         <input type="date" id="start_date" name="start_date" required>
-        
+
         <label for="end_date">End Date:</label>
         <input type="date" id="end_date" name="end_date" required>
-        
+
         <button type="submit" class="btn">Create Tournament</button>
         <a href="{{ url_for('tournaments') }}"><button type="button" class="btn" style="background-color: #007bff;">🏠 Back to Tournaments</button></a>
     </form>
