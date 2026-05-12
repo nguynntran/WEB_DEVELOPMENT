@@ -1,0 +1,13 @@
+services:
+  web:
+    build: .
+    container_name: tournament_app
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./database:/app/database
+    environment:
+      FLASK_APP: run.py
+      FLASK_ENV: development
+    command: python run.py
+
