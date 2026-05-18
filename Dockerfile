@@ -23,7 +23,7 @@ EXPOSE 5050
 
 # Set environment variables
 ENV FLASK_APP=run.py
-ENV FLASK_ENV=development
+ENV FLASK_ENV=production
 
-# Run the application
-CMD ["python", "run.py"]
+# Run the application using gunicorn for production. Use $PORT with a default of 8080.
+CMD ["sh", "-c", "gunicorn 'run:app' --bind 0.0.0.0:${PORT:-8080} --workers 4"]
