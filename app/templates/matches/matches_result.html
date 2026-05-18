@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Match Result{% endblock %}
+{% block content %}
+	<h1>📝 Match Result</h1>
+
+	<div style="margin: 20px 0;">
+		<a href="{{ url_for('matches') }}?tournament_id={{ match.tournament_id }}">
+			<button class="btn" style="background-color: #6c757d;">← Back to Matches</button>
+		</a>
+	</div>
+
+	<div style="background: white; border: 1px solid #ddd; border-radius: 8px; padding: 20px; max-width: 700px;">
+		<p><strong>Tournament:</strong> {{ match.tournament.name }}</p>
+		<p><strong>Round:</strong> {{ match.round or 'N/A' }}</p>
+		<p><strong>Fixture:</strong> {{ match.team1.name }} vs {{ match.team2.name }}</p>
+
+		<form method="POST" action="{{ url_for('match_result', id=match.id) }}" style="margin-top: 20px;">
+			<label for="scheduled_time"><strong>Match Date & Time:</strong></label><br>
+			<input
+				type="datetime-local"
+				id="scheduled_time"
+				name="scheduled_time"
+				value="{{ match.scheduled_time.strftime('%Y-%m-%dT%H:%M') if match.scheduled_time else '' }}"
+			>
+			<br><br>
+
+			<label for="team1_score"><strong>{{ match.team1.name }} Score:</strong></label><br>
+			<input
+				type="number"
+				id="team1_score"
+				name="team1_score"
+				min="0"
+				required
+				value="{{ result.team1_score if result else '' }}"
+			>
+			<br><br>
+
+			<label for="team2_score"><strong>{{ match.team2.name }} Score:</strong></label><br>
+			<input
+				type="number"
+				id="team2_score"
+				name="team2_score"
+				min="0"
+				required
+				value="{{ result.team2_score if result else '' }}"
+			>
+			<br><br>
+
+			<button type="submit" class="btn" style="background-color: #28a745;">
+				{% if result %}Update Result{% else %}Save Result{% endif %}
+			</button>
+		</form>
+	</div>
+{% endblock %}

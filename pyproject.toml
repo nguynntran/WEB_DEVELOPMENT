@@ -1,0 +1,21 @@
+[tool.ruff]
+line-length = 88
+
+target-version = "py311"
+exclude = [
+	".git",
+	".venv",
+	"venv",
+	"__pycache__",
+	"database",
+	".vscode",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+pythonpath = ["."]
+addopts = "-q"
