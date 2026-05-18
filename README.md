@@ -6,7 +6,7 @@ A web application for managing sports tournaments, built with Flask. The system 
 ## Technology Stack
 **Backend Framework:** Flask (Python)
 **Database:** PostgreSQL
-**Authentication:** Flask-Login 
+**Authentication:** Flask-Login
 **ORM:** SQLAlchemy
 **API:** RESTful API architecture
 
@@ -64,13 +64,70 @@ A web application for managing sports tournaments, built with Flask. The system 
 **Authentication Required:** POST/PUT/DELETE operations
 **Public Access:** GET operations for viewing tournaments and standings
 
-## Implementation Plan
-1. Setup Flask project structure and database
-2. Implement User authentication system
-3. Build Tournament CRUD operations
-4. Develop Team management module
-5. Create Match scheduling logic
-6. Implement Result processing and standings calculation
-7. Test all API endpoints
-8. Documentation and deployment
+## Current Project Status
 
+### ✅ COMPLETED
+- User authentication (register, login, logout with Flask-Login)
+- Tournament CRUD: Create, Read, Update, Delete tournaments
+- Team management: Register teams, add existing teams to tournaments
+- Match scheduling: Round Robin & Knockout format generation
+- Match result submission with score tracking
+- Standings calculation with 3-1-0 points system (Win=3, Draw=1, Loss=0)
+- Code organization: Routes split into separate modules (tournament, team, match, standing, auth)
+- Constants management: Scoring rules and string limits in constants.py
+- Docker setup: Dockerfile, docker-compose.yml, requirements.txt
+
+### 🔄 IN PROGRESS / TODO
+- [ ] API testing (unit tests & integration tests)
+- [ ] Swiss tournament format (listed but not implemented)
+- [ ] Group Stage + Knockout format (listed but not implemented)
+- [ ] Goal difference as standings tie-breaker
+- [ ] Match postponement/rescheduling features
+- [ ] Team filtering per user
+- [ ] Individual match detail page
+- [ ] Admin dashboard
+- [ ] API documentation
+- [ ] GitHub Actions CI/CD pipeline
+- [ ] Deployment to production
+
+## Project Structure
+```
+WEB_DEV/
+├── app/
+│   ├── routes/
+│   │   ├── __init__.py
+│   │   ├── tournament_routes.py
+│   │   ├── team_routes.py
+│   │   ├── match_routes.py
+│   │   ├── standing_routes.py
+│   │   └── auth_routes.py
+│   ├── templates/
+│   │   ├── base.html
+│   │   ├── tournament/
+│   │   ├── team/
+│   │   ├── matches/
+│   │   └── standings/
+│   ├── static/
+│   │   └── css/
+│   ├── __init__.py
+│   ├── models.py
+│   └── constants.py
+├── database/
+│   └── tournament.db
+├── Dockerfile
+├── docker-compose.yml
+├── requirements.txt
+├── config.py
+├── run.py
+└── README.md
+```
+
+## Implementation Plan
+1. ✅ Setup Flask project structure and database
+2. ✅ Implement User authentication system
+3. ✅ Build Tournament CRUD operations
+4. ✅ Develop Team management module
+5. ✅ Create Match scheduling logic
+6. ✅ Implement Result processing and standings calculation
+7. 🔄 Test all API endpoints (In Progress)
+8. 🔄 Code organization and Docker deployment (In Progress)
